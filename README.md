@@ -205,13 +205,3 @@ deploy_agentcore/softwarefactory/   # the AgentCore deployment (CLI / CDK)
   identity_demo.py policy_demo.py interceptor_demo.py
   longterm_memory_demo.py strands_agentcore_pipeline.py
 ```
-
-## Notes & caveats
-
-- The AgentCore starter-toolkit CLI is legacy; this project uses the newer
-  CDK-based `@aws/agentcore` CLI. Verify the CLI available in your
-  account/region before deploying.
-- Long-term Memory extraction is asynchronous (10–30s). The deployed director
-  uses short-term Events (synchronous) for session state.
-- Deployment identifiers (account, resource names) are generic placeholders in
-  the committed source. Set your real values in `.env` — it's git-ignored.
