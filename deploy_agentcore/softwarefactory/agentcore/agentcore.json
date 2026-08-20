@@ -1,0 +1,205 @@
+{
+  "$schema": "https://schema.agentcore.aws.dev/v1/agentcore.json",
+  "name": "softwarefactory",
+  "version": 1,
+  "managedBy": "CDK",
+  "tags": {
+    "agentcore:created-by": "agentcore-cli",
+    "agentcore:project-name": "softwarefactory"
+  },
+  "runtimes": [
+    {
+      "name": "director",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/director/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP"
+    },
+    {
+      "name": "code_writer",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/code_writer/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP"
+    },
+    {
+      "name": "code_reviewer",
+      "build": "CodeZip",
+      "entrypoint": "main.py",
+      "codeLocation": "app/code_reviewer/",
+      "runtimeVersion": "PYTHON_3_14",
+      "networkMode": "PUBLIC",
+      "protocol": "HTTP"
+    }
+  ],
+  "memories": [
+    {
+      "name": "directorMemory",
+      "eventExpiryDuration": 30,
+      "strategies": []
+    }
+  ],
+  "knowledgeBases": [],
+  "credentials": [],
+  "evaluators": [
+    {
+      "name": "report_quality",
+      "level": "SESSION",
+      "config": {
+        "llmAsAJudge": {
+          "model": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+          "instructions": "Evaluate whether the agent produced a clear customer status report containing total MRR, open support tickets, and at-risk accounts for the requested tenant. Context: {context}",
+          "ratingScale": {
+            "numerical": [
+              {
+                "value": 1,
+                "label": "Poor",
+                "definition": "Fails to meet expectations"
+              },
+              {
+                "value": 2,
+                "label": "Fair",
+                "definition": "Partially meets expectations"
+              },
+              {
+                "value": 3,
+                "label": "Good",
+                "definition": "Meets expectations"
+              },
+              {
+                "value": 4,
+                "label": "Very Good",
+                "definition": "Exceeds expectations"
+              },
+              {
+                "value": 5,
+                "label": "Excellent",
+                "definition": "Far exceeds expectations"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "report_schema_check",
+      "level": "SESSION",
+      "description": "Deterministic, no-LLM field-presence check for the customer status report (Total MRR, open tickets, at-risk accounts).",
+      "config": {
+        "codeBased": {
+          "managed": {
+            "codeLocation": "eval_code/",
+            "entrypoint": "report_schema_check.handler",
+            "timeoutSeconds": 30
+          }
+        }
+      }
+    }
+  ],
+  "onlineEvalConfigs": [
+    {
+      "name": "director_online_evals",
+      "agent": "director",
+      "evaluators": [
+        "Builtin.GoalSuccessRate",
+        "Builtin.ToolSelectionAccuracy",
+        "Builtin.Helpfulness",
+        "report_quality",
+        "report_schema_check"
+      ],
+      "samplingRate": 100,
+      "enableOnCreate": true
+    },
+    {
+      "name": "director_insights",
+      "agent": "director",
+      "insights": [
+        "Builtin.Insight.FailureAnalysis",
+        "Builtin.Insight.UserIntent",
+        "Builtin.Insight.ExecutionSummary"
+      ],
+      "clusteringConfig": {
+        "frequencies": [
+          "DAILY"
+        ]
+      },
+      "samplingRate": 100,
+      "enableOnCreate": true
+    }
+  ],
+  "agentCoreGateways": [
+    {
+      "name": "crmGateway",
+      "protocolType": "MCP",
+      "description": "Multi-tenant CRM routing for the software factory",
+      "targets": [
+        {
+          "name": "crmTarget",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-2:123456789012:function:crm-backend",
+            "toolSchemaFile": "lambda_crm/tool_schema.json"
+          }
+        }
+      ],
+      "authorizerType": "AWS_IAM",
+      "enableSemanticSearch": true,
+      "exceptionLevel": "NONE"
+    },
+    {
+      "name": "crm-policy-gw",
+      "protocolType": "MCP",
+      "description": "Policy demo per-user tool access",
+      "targets": [
+        {
+          "name": "crmTool",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-2:123456789012:function:crm-backend",
+            "toolSchemaFile": "lambda_crm/tool_schema.json"
+          }
+        },
+        {
+          "name": "piiTool",
+          "targetType": "lambdaFunctionArn",
+          "lambdaFunctionArn": {
+            "lambdaArn": "arn:aws:lambda:us-east-2:123456789012:function:crm-backend",
+            "toolSchemaFile": "lambda_crm/pii_tool_schema.json"
+          }
+        }
+      ],
+      "authorizerType": "CUSTOM_JWT",
+      "authorizerConfiguration": {
+        "customJwtAuthorizer": {
+          "discoveryUrl": "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_XXXXXXXXX/.well-known/openid-configuration",
+          "allowedClients": [
+            "REPLACE_WITH_ANALYST_CLIENT_ID",
+            "REPLACE_WITH_ADMIN_CLIENT_ID"
+          ]
+        }
+      },
+      "enableSemanticSearch": true,
+      "exceptionLevel": "NONE",
+      "policyEngineConfiguration": {
+        "policyEngineName": "crm_policy_engine",
+        "mode": "ENFORCE"
+      }
+    }
+  ],
+  "policyEngines": [
+    {
+      "name": "crm_policy_engine",
+      "description": "Per-user tool access for CRM gateway",
+      "policies": []
+    }
+  ],
+  "configBundles": [],
+  "abTests": [],
+  "harnesses": [],
+  "datasets": [],
+  "payments": []
+}

@@ -1,0 +1,16 @@
+[
+  {
+    "name": "export_customer_pii",
+    "description": "Export sensitive customer PII (billing contact, phone, account number) for a tenant. Admin-only.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "description": "The MSP tenant id, e.g. 'msp-a' or 'msp-b'."
+        }
+      },
+      "required": ["tenant_id"]
+    }
+  }
+]

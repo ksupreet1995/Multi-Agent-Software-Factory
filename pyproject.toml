@@ -1,0 +1,18 @@
+[project]
+name = "multi-agent-software-factory"
+version = "0.1.0"
+description = "Multi-agent 'Software Factory' demo on Amazon Bedrock AgentCore (all seven pillars)"
+requires-python = ">=3.11"
+dependencies = [
+    "bedrock-agentcore>=1.0.0",
+    "strands-agents>=1.0.1",
+    "strands-agents-tools>=0.2.1",
+    "boto3>=1.39.9",
+    "python-dotenv>=1.0.1",
+    "python-pptx>=0.6.23",
+]
+
+[tool.setuptools]
+packages = [
+    "webui",
+]

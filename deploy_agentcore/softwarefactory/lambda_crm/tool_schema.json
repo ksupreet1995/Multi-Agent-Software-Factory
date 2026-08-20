@@ -1,0 +1,16 @@
+[
+  {
+    "name": "get_crm_customers",
+    "description": "Fetch CRM customer records (name, mrr, status, tickets_open) for a specific MSP tenant. Returns records sorted by MRR descending.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "description": "The MSP tenant id, e.g. 'msp-a' or 'msp-b'."
+        }
+      },
+      "required": ["tenant_id"]
+    }
+  }
+]

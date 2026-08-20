@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Software Factory — AgentCore</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▚</span>
+      <div>
+        <h1>Software Factory</h1>
+        <p class="sub">Powered by Amazon Bedrock AgentCore</p>
+      </div>
+    </div>
+    <div class="status" id="status">
+      <span class="pill" id="mode-pill">…</span>
+      <span class="pill" id="cw-pill">CloudWatch: …</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- Control panel -->
+    <section class="panel controls">
+      <h2>Run a factory job</h2>
+      <label>Tenant
+        <select id="tenant"></select>
+      </label>
+      <label>Engineer prompt
+        <textarea id="prompt" rows="3">Generate a customer status report from our CRM</textarea>
+      </label>
+      <div class="live-indicator" id="live-indicator">● LIVE — deployed AgentCore runtimes</div>
+      <button id="run-btn">▶ Run workflow</button>
+      <p class="hint">Each step is mirrored to CloudWatch Logs in real time.</p>
+
+      <div class="pipeline" id="pipeline"></div>
+    </section>
+
+    <!-- Live workflow feed -->
+    <section class="panel feed-panel">
+      <h2>Live workflow <span class="tenant-tag" id="tenant-tag"></span></h2>
+      <div class="feed" id="feed">
+        <div class="empty">Run a job to see agents, tool calls, code, and the report stream in.</div>
+      </div>
+    </section>
+
+    <!-- Artifacts -->
+    <section class="panel artifacts">
+      <div class="tabs">
+        <button class="tab active" data-tab="code">Generated Code</button>
+        <button class="tab" data-tab="crm">CRM Data</button>
+        <button class="tab" data-tab="report">Report</button>
+        <button class="tab" data-tab="evals">Evals</button>
+        <button class="tab" data-tab="arch">Architecture</button>
+      </div>
+
+      <div class="tab-body" id="tab-code">
+        <pre class="code"><code id="code-view">// generated Python will appear here</code></pre>
+      </div>
+      <div class="tab-body hidden" id="tab-crm">
+        <table class="crm-table" id="crm-view">
+          <thead><tr><th>Customer</th><th>MRR</th><th>Status</th><th>Open Tickets</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-body hidden" id="tab-report">
+        <div class="slide" id="slide">
+          <div class="slide-title" id="slide-title">Customer Status Report</div>
+          <div class="slide-sub" id="slide-sub"></div>
+          <pre class="slide-body" id="slide-body"></pre>
+        </div>
+        <a class="download hidden" id="download" href="#">⬇ Download PowerPoint (.pptx)</a>
+      </div>
+
+      <div class="tab-body hidden" id="tab-evals">
+        <div class="evals-head">
+          <div>
+            <div class="evals-title">AgentCore Evaluations</div>
+            <div class="evals-sub">On-demand (offline) LLM-as-a-judge scoring of the deployed director's traces.</div>
+          </div>
+          <button id="eval-btn">▶ Run evaluation</button>
+        </div>
+        <div class="online-badge" id="online-badge">● Online eval config: <span id="online-status">checking…</span></div>
+        <div class="eval-results" id="eval-results">
+          <div class="empty">Run an evaluation to score recent director sessions.</div>
+        </div>
+
+        <div class="pipeline-section">
+          <div class="evals-head">
+            <div>
+              <div class="evals-title">Strands Evals + AgentCore Evals — two roles, one loop</div>
+              <div class="evals-sub"><b>Strands</b> = dev-time inner loop (author scenarios + local pre-deploy gate). <b>AgentCore</b> = managed outer loop (score &amp; monitor the deployed agent at scale). Not competing scores — complementary roles.</div>
+            </div>
+            <button id="pipeline-btn">▶ Run pipeline</button>
+          </div>
+          <div class="pipe-stages" id="pipe-stages">
+            <div class="pstage" id="ps-author"><span class="dot"></span><div><b>1. Author</b><span class="ps-detail">Strands Evals Cases</span></div></div>
+            <div class="pstage" id="ps-run"><span class="dot"></span><div><b>2. Run</b><span class="ps-detail">Deployed director → CloudWatch</span></div></div>
+            <div class="pstage" id="ps-score"><span class="dot"></span><div><b>3. Monitor (AgentCore)</b><span class="ps-detail">Managed scoring at scale</span></div></div>
+            <div class="pstage" id="ps-strands_gate"><span class="dot"></span><div><b>4. Gate (Strands)</b><span class="ps-detail">Local pre-deploy pass/fail</span></div></div>
+          </div>
+          <div class="pipe-results" id="pipe-results"></div>
+        </div>
+      </div>
+
+      <div class="tab-body hidden" id="tab-arch">
+        <div class="arch-title">Software Factory on Amazon Bedrock AgentCore</div>
+        <div class="arch-sub">The client invokes the Director Runtime directly. The Director orchestrates specialists AND calls the tools — the Gateway is one of those tools (outbound to the CRM), not the front door.</div>
+
+        <div class="arch-flow">
+          <div class="arch-node client">Engineer / Web UI<span>prompt + tenant</span></div>
+          <div class="arch-arrow">▼ invoke_agent_runtime (IAM / SigV4)</div>
+
+          <div class="arch-node director">Director Runtime<span>orchestrator — the front door</span></div>
+
+          <div class="arch-sidecars">
+            <div class="arch-chip identity">Identity<span>JIT scoped tokens</span></div>
+            <div class="arch-chip memory">Memory<span>session state</span></div>
+          </div>
+
+          <div class="arch-arrow">▼ the Director runs these in sequence (tools + delegations interleaved)</div>
+
+          <div class="arch-seq">
+            <div class="arch-seq-node tool"><b>1. CRM Tool</b><span>tool · Director → Gateway → Lambda (outbound)</span></div>
+            <div class="arch-seq-arrow">→</div>
+            <div class="arch-seq-node spec"><b>2. Code Writer</b><span>delegate · generates Python</span></div>
+            <div class="arch-seq-arrow">→</div>
+            <div class="arch-seq-node spec"><b>3. Code Reviewer</b><span>delegate · approves / rejects</span></div>
+            <div class="arch-seq-arrow">→</div>
+            <div class="arch-seq-node tool"><b>4. Code Interpreter</b><span>tool · direct SDK sandbox</span></div>
+          </div>
+        </div>
+
+        <div class="arch-pattern">
+          <div class="arch-pattern-label">Design pattern — Supervisor (orchestrator)</div>
+          <p>This is a supervisor (orchestrator) multi-agent pattern. The Director is the supervisor — it holds the goal, calls the CRM tool for data, delegates writing and reviewing to specialist agents that each run on their own runtime, then executes the approved code in a sandbox. Specialists don't talk to each other — everything routes through the supervisor, which keeps control, retries, and tenant isolation in one place.</p>
+        </div>
+
+        <div class="arch-foot">
+          <div class="arch-foot-item obs">Observability → CloudWatch: traces · P50/P95/P99 · tokens (every step)</div>
+          <div class="arch-foot-item evals">Evaluations: online (continuous) + offline (on-demand / batch)</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>
